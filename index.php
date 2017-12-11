@@ -28,14 +28,14 @@ $title = $doc->createElement('title', "Church Readings");
 $title = $head->appendChild($title);
 $body = $doc->createElement('body');
 $body = $root->appendChild($body);
-$h1 = $body->appendChild($doc->createElement("h1", sprintf("Church Readings for %s", $date)));
+$h1 = $body->appendChild($doc->createElement("h1", "Mass Readings Project"));
 
 ## FUNCTIONS
 
-/* https://stackoverflow.com/questions/19271381/correctly-determine-if-date-string-is-a-valid-date-in-that-format */
-function validateDate($date, $format = 'Y-m-d') {
-  $d = DateTime::createFromFormat($format, $date);
-  return $d && $d->format($format) == $date;
+function dateReformat($date, $srcFormat = 'Y-m-d', $destFormat = 'ymd') {
+  $d = DateTime::createFromFormat($srcFormat, $date);
+  if ($d && $d->format($srcFormat) == $date) return $d->format($destFormat);
+  throw new Exception(sprintf("Ivalid date parameter (must conform '%s' format)", URL_DATE_FORMAT));
 }
 
 function getRemoteContent($url) {
@@ -62,10 +62,8 @@ function getRemoteContent($url) {
 try {
 
   // date validatation
-  if (strlen($date) != 6 || !preg_match("/[0-9]{6}/", $date) || !validateDate($date, URL_DATE_FORMAT)) {
-    throw new Exception(sprintf("Ivalid date parameter (must conform '%s' format)", URL_DATE_FORMAT));
-  }
-
+  $longDate = dateReformat($date, URL_DATE_FORMAT, DISPLAY_DATE_FORMAT);
+  $h1->nodeValue = sprintf("Mass Readings for %s", $longDate);
   $src_string = getRemoteContent($url);
 
   // parse source HTML
