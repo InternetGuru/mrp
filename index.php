@@ -5,7 +5,8 @@
 define("URL", "http://www.usccb.org/bible/readings/%s.cfm");
 define("URL_DATE_FORMAT", "mdy");
 define("DISPLAY_DATE_FORMAT", "l jS \of F Y");
-$url = sprintf(URL, date(URL_DATE_FORMAT));
+$date = isset($_GET['date']) ? $_GET['date'] : date(URL_DATE_FORMAT);
+$url = sprintf(URL, $date);
 $startTime = round(microtime(true) * 1000);
 
 ## CREATE HTML DOCUMENT
@@ -27,11 +28,24 @@ $title = $doc->createElement('title', "Church Readings");
 $title = $head->appendChild($title);
 $body = $doc->createElement('body');
 $body = $root->appendChild($body);
-$h1 = $body->appendChild($doc->createElement("h1", sprintf("Church Readings for %s", date(DISPLAY_DATE_FORMAT))));
+$h1 = $body->appendChild($doc->createElement("h1", sprintf("Church Readings for %s", $date)));
+
+## FUNCTIONS
+
+/* https://stackoverflow.com/questions/19271381/correctly-determine-if-date-string-is-a-valid-date-in-that-format */
+function validateDate($date, $format = 'Y-m-d') {
+  $d = DateTime::createFromFormat($format, $date);
+  return $d && $d->format($format) == $date;
+}
 
 ## GET THE SOURCE CONTENT
 
 try {
+
+  // date validatation
+  if (strlen($date) != 6 || !preg_match("/[0-9]{6}/", $date) || !validateDate($date, URL_DATE_FORMAT)) {
+    throw new Exception(sprintf("Ivalid date parameter (must conform '%s' format)", URL_DATE_FORMAT));
+  }
 
   // get remote URL content
   $src_string = @file_get_contents($url);
@@ -45,6 +59,31 @@ try {
     throw new Exception("Unable to parse HTML.");
   }
 
+  // process the source content
+  $divs = $src_dom->getElementsByTagName("div");
+  foreach($divs as $div) {
+    if($div->getAttribute("class") != "bibleReadingsWrapper") {
+      continue;
+    }
+    $chunk = $src_dom->saveHTML($div);
+    $chunk = preg_replace("/\s*<a href=.+?<\/a>\s*/s", '', $chunk);
+    $chunk = preg_replace("/<div.*?>/", '', $chunk);
+    $chunk = preg_replace("/<\/div>/", '', $chunk);
+    $chunk = str_replace("<h4>", '</p><h2>', $chunk);
+    $chunk = str_replace("</h4>", '</h2><p>', $chunk);
+    $chunk = str_replace("<br><br>", '</p><p>', '<p>'.$chunk.'</p>');
+    $chunk = str_replace("<br><br>", '</p><p>', $chunk);
+    $chunk = preg_replace("/\s*<\/p>/", '</p>', $chunk);
+    $chunk = preg_replace("/<p>\s*/", "<p>", $chunk);
+    $chunk = str_replace("<p></p>", '', $chunk);
+    $chunk = str_replace("<br></p>", "</p>", $chunk);
+    $chunk_dom = new DOMDocument('1.0', 'UTF-8');
+    $chunk_dom->loadHTML($chunk);
+    foreach ($chunk_dom->getElementsByTagName("body")->item(0)->childNodes as $node) {
+      $body->appendChild($doc->importNode($node, true));
+    }
+  }
+
 } catch(Exception $e) {
 
   $code = $e->getCode() ? $e->getCode() : 500;
@@ -53,32 +92,6 @@ try {
   $p = $body->appendChild($doc->createElement("p"));
   $p->nodeValue = $e->getMessage();
 
-}
-
-## PROCESS THE SOURCE CONTENT
-
-$divs = $src_dom->getElementsByTagName("div");
-foreach($divs as $div) {
-  if($div->getAttribute("class") != "bibleReadingsWrapper") {
-    continue;
-  }
-  $chunk = $src_dom->saveHTML($div);
-  $chunk = preg_replace("/\s*<a href=.+?<\/a>\s*/s", '', $chunk);
-  $chunk = preg_replace("/<div.*?>/", '', $chunk);
-  $chunk = preg_replace("/<\/div>/", '', $chunk);
-  $chunk = str_replace("<h4>", '</p><h2>', $chunk);
-  $chunk = str_replace("</h4>", '</h2><p>', $chunk);
-  $chunk = str_replace("<br><br>", '</p><p>', '<p>'.$chunk.'</p>');
-  $chunk = str_replace("<br><br>", '</p><p>', $chunk);
-  $chunk = preg_replace("/\s*<\/p>/", '</p>', $chunk);
-  $chunk = preg_replace("/<p>\s*/", "<p>", $chunk);
-  $chunk = str_replace("<p></p>", '', $chunk);
-  $chunk = str_replace("<br></p>", "</p>", $chunk);
-  $chunk_dom = new DOMDocument('1.0', 'UTF-8');
-  $chunk_dom->loadHTML($chunk);
-  foreach ($chunk_dom->getElementsByTagName("body")->item(0)->childNodes as $node) {
-    $body->appendChild($doc->importNode($node, true));
-  }
 }
 
 ## GENERATE FOOTER
