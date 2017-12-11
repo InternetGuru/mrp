@@ -61,18 +61,16 @@ function getRemoteContent($url) {
 
 try {
 
-  // date validatation
+  // get source content
   $longDate = dateReformat($date, URL_DATE_FORMAT, DISPLAY_DATE_FORMAT);
   $h1->nodeValue = sprintf("Mass Readings for %s", $longDate);
   $src_string = getRemoteContent($url);
-
-  // parse source HTML
   $src_dom = new DOMDocument('1.0', 'UTF-8');
   if(!@$src_dom->loadHTML($src_string)) {
     throw new Exception("Unable to parse HTML.");
   }
 
-  // process the source content
+  // process source content
   $divs = $src_dom->getElementsByTagName("div");
   foreach($divs as $div) {
     if($div->getAttribute("class") != "bibleReadingsWrapper") {
@@ -91,7 +89,9 @@ try {
     $chunk = str_replace("<p></p>", '', $chunk);
     $chunk = str_replace("<br></p>", "</p>", $chunk);
     $chunk_dom = new DOMDocument('1.0', 'UTF-8');
-    $chunk_dom->loadHTML($chunk);
+    if (!@$chunk_dom->loadHTML($chunk)) {
+      throw new Exception("Unable to parse HTML");
+    }
     foreach ($chunk_dom->getElementsByTagName("body")->item(0)->childNodes as $node) {
       $body->appendChild($doc->importNode($node, true));
     }
