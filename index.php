@@ -38,6 +38,25 @@ function validateDate($date, $format = 'Y-m-d') {
   return $d && $d->format($format) == $date;
 }
 
+function getRemoteContent($url) {
+  $curl = curl_init();
+  try {
+    curl_setopt_array($curl, array(
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_URL => $url));
+    $content = curl_exec($curl);
+    $response_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    if($response_code != 200) {
+      throw new Exception(sprintf("Unable to get content from URL (status code %s).", $response_code));
+    }
+    return $content;
+  } catch (Exception $e) {
+    throw $e;
+  } finally {
+    curl_close($curl);
+  }
+}
+
 ## GET THE SOURCE CONTENT
 
 try {
@@ -47,11 +66,7 @@ try {
     throw new Exception(sprintf("Ivalid date parameter (must conform '%s' format)", URL_DATE_FORMAT));
   }
 
-  // get remote URL content
-  $src_string = @file_get_contents($url);
-  if(!$src_string) {
-    throw new Exception("No HTML content found.");
-  }
+  $src_string = getRemoteContent($url);
 
   // parse source HTML
   $src_dom = new DOMDocument('1.0', 'UTF-8');
