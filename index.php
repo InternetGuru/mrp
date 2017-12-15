@@ -35,7 +35,7 @@ $h1 = $body->appendChild($doc->createElement("h1", "Mass Readings Project"));
 function dateReformat($date, $srcFormat = 'Y-m-d', $destFormat = 'ymd') {
   $d = DateTime::createFromFormat($srcFormat, $date);
   if ($d && $d->format($srcFormat) == $date) return $d->format($destFormat);
-  throw new Exception(sprintf("Ivalid date parameter (must conform '%s' format)", URL_DATE_FORMAT));
+  throw new Exception(sprintf("Invalid date parameter (must conform '%s' format)", URL_DATE_FORMAT));
 }
 
 function getRemoteContent($url) {
