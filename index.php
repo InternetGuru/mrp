@@ -2,7 +2,8 @@
 
 ## SET CONSTANTS AND VARIABLES
 
-define("URL", "http://www.usccb.org/bible/readings/%s.cfm");
+define("DOMAIN", "http://www.usccb.org");
+define("URL", DOMAIN."/bible/readings/%s.cfm");
 define("URL_DATE_FORMAT", "mdy");
 define("DISPLAY_DATE_FORMAT", "l jS \of F Y");
 $date = isset($_GET['date']) ? $_GET['date'] : date(URL_DATE_FORMAT);
@@ -77,7 +78,8 @@ try {
       continue;
     }
     $chunk = $src_dom->saveHTML($div);
-    $chunk = preg_replace("/\s*<a href=.+?<\/a>\s*/s", '', $chunk);
+    #$chunk = preg_replace("/\s*<a href=.+?<\/a>\s*/s", '', $chunk); // remove links
+    $chunk = str_replace('<a href="/', '<a href="'.DOMAIN."/", $chunk);
     $chunk = preg_replace("/<div.*?>/", '', $chunk);
     $chunk = preg_replace("/<\/div>/", '', $chunk);
     $chunk = str_replace("<h4>", '</p><h2>', $chunk);
