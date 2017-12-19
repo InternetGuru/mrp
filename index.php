@@ -3,12 +3,15 @@
 ## SET CONSTANTS AND VARIABLES
 
 define("DOMAIN", "http://www.usccb.org");
-define("URL", DOMAIN."/bible/readings/%s.cfm");
+define("URL_PATH", "/bible/readings");
+define("URL", DOMAIN.URL_PATH."/%s.cfm");
 define("URL_DATE_FORMAT", "mdy");
 define("DISPLAY_DATE_FORMAT", "l jS \of F Y");
+define("DIV_CLASS", "bibleReadingsWrapper");
 $date = isset($_GET['date']) ? $_GET['date'] : date(URL_DATE_FORMAT);
 $url = sprintf(URL, $date);
 $startTime = round(microtime(true) * 1000);
+$special_url = null;
 
 ## CREATE HTML DOCUMENT
 
@@ -50,12 +53,28 @@ function getRemoteContent($url) {
     if($response_code != 200) {
       throw new Exception(sprintf("Unable to get content from URL (status code %s).", $response_code));
     }
-    return $content;
+
+    $src_dom = new DOMDocument('1.0', 'UTF-8');
+    if(!@$src_dom->loadHTML($content)) {
+      throw new Exception("Unable to parse HTML.");
+    }
+    return $src_dom;
   } catch (Exception $e) {
     throw $e;
   } finally {
     curl_close($curl);
   }
+}
+
+function getClassDiv (DOMDocument $doc, $class = DIV_CLASS) {
+  $array = [];
+  $divs = $doc->getElementsByTagName("div");
+  foreach($divs as $div) {
+    if($div->getAttribute("class") == $class) {
+      $array[] = $div;
+    }
+  }
+  return $array;
 }
 
 ## GET THE SOURCE CONTENT
@@ -65,18 +84,25 @@ try {
   // get source content
   $longDate = dateReformat($date, URL_DATE_FORMAT, DISPLAY_DATE_FORMAT);
   $h1->nodeValue = sprintf("Mass Readings for %s", $longDate);
-  $src_string = getRemoteContent($url);
-  $src_dom = new DOMDocument('1.0', 'UTF-8');
-  if(!@$src_dom->loadHTML($src_string)) {
-    throw new Exception("Unable to parse HTML.");
+  $src_dom = getRemoteContent($url);
+  $classDivs = getClassDiv($src_dom);
+
+  // looking for special or alternative masses for the day
+  $chunk = $src_dom->saveHTML(current($classDivs));
+  if(strpos($chunk, "<ul>\n<li><h3><a class=") !== false) {
+    # get urls
+    preg_match_all("/href=\"(.+?)\"/", $chunk, $matches);
+    if (count($matches[1]) < 2) {
+      throw new Exception("Special day links not found.");
+    }
+    $default_url = DOMAIN . $matches[1][0];
+    $special_url = DOMAIN . $matches[1][1];
+    $src_dom = getRemoteContent($default_url);
+    $classDivs = getClassDiv($src_dom);
   }
 
   // process source content
-  $divs = $src_dom->getElementsByTagName("div");
-  foreach($divs as $div) {
-    if($div->getAttribute("class") != "bibleReadingsWrapper") {
-      continue;
-    }
+  foreach ($classDivs as $div) {
     $chunk = $src_dom->saveHTML($div);
     #$chunk = preg_replace("/\s*<a href=.+?<\/a>\s*/s", '', $chunk); // remove links
     $chunk = str_replace('<a href="/', '<a href="'.DOMAIN."/", $chunk);
