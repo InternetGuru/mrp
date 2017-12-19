@@ -8,7 +8,9 @@ define("URL", DOMAIN.URL_PATH."/%s.cfm");
 define("URL_DATE_FORMAT", "mdy");
 define("DISPLAY_DATE_FORMAT", "l jS \of F Y");
 define("DIV_CLASS", "bibleReadingsWrapper");
+define("SPECIAL_CONTENT", "special");
 $date = isset($_GET['date']) ? $_GET['date'] : date(URL_DATE_FORMAT);
+$content = isset($_GET['content']) ? $_GET['content'] : 'default';
 $url = sprintf(URL, $date);
 $startTime = round(microtime(true) * 1000);
 $special_url = null;
@@ -97,7 +99,7 @@ try {
     }
     $default_url = DOMAIN . $matches[1][0];
     $special_url = DOMAIN . $matches[1][1];
-    $src_dom = getRemoteContent($default_url);
+    $src_dom = getRemoteContent($content == SPECIAL_CONTENT ? $special_url : $default_url);
     $classDivs = getClassDiv($src_dom);
   }
 
