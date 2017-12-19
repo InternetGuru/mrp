@@ -100,6 +100,11 @@ try {
     $default_url = DOMAIN . $matches[1][0];
     $special_url = DOMAIN . $matches[1][1];
     $src_dom = getRemoteContent($content == SPECIAL_CONTENT ? $special_url : $default_url);
+
+    $p = $body->appendChild($doc->createElement("p", sprintf("This is the %s content for this date. ", $content == 'default' ? 'default' : 'special')));
+    $a = $p->appendChild($doc->createElement("a", sprintf("Switch to %s readings.", $content == 'default' ? 'special' : 'default')));
+    $href = '?date='.$date.($content == 'default' ? '&content='.SPECIAL_CONTENT : '');
+    $a->setAttribute("href", $href);
     $classDivs = getClassDiv($src_dom);
   }
 
